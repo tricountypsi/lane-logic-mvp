@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+    import pandas as pd
     
     # 1. THE DELTA ENGINE LOGIC
     def get_advice(result, speed, release, history):
@@ -88,4 +88,3 @@ import pandas as pd
             st.session_state.history = []
             st.session_state.input_key = 0
             st.rerun()
-    
