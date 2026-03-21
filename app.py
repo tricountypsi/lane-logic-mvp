@@ -1,12 +1,12 @@
 import streamlit as st
     
-    # 1. THE DELTA ENGINE LOGIC (Version 1 style)
-    def get_advice(result, speed, release):
-        # Marcus Filter (Release)
-        if release == 'Pulled (PI)':
-            return "🎯 PULL DETECTED: Disregard lane friction. Check your target."
-        if release == 'Pushed (PO)':
-            return "💨 PUSHED: Ball missed out. Do not adjust."
+    # 1. THE DELTA ENGINE LOGIC (Version 1 style)                   
+def get_advice(result, speed, release):
+    # Marcus Filter (Release)
+    if release == 'Pulled (PI)':
+    return "🎯 PULL DETECTED: Disregard lane friction. Check your target."
+    if release == 'Pushed (PO)':
+    return "💨 PUSHED: Ball missed out. Do not adjust."
     
         # Speed Filter
         if speed == 'Fast':
