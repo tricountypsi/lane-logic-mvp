@@ -1,125 +1,97 @@
 import streamlit as st
-
-import pandas as pd
-
-# 1. THE DELTA ENGINE LOGIC
-
-class DeltaEngine:
-
-    def analyze_shot(self, result, speed, pocket, history):
-
-        if speed in ['Fast', 'Slow']:
-
-            return "⚠️ SPEED ERROR: Stay put. Do not adjust.", "warning"
-
-        
-
-        # Energy Drain Rule
-
-        if len(history) >= 1:
-
-            prev = history[-1]
-
-            if prev['result'] in ['High', 'Brooklyn'] and result == 'Light':
-
-                return "🚨 CRITICAL: Energy Drain. BALL DOWN NOW.", "error"
-
-        # Basic Transition Logic
-
-        if result in ['High', 'Brooklyn']:
-
-            return "📉 CAUTION: Friction detected. Move 1-1 Left.", "info"
-
-        elif result == 'Light':
-
-            return "💧 OIL DETECTED: Ball finishing late. Move 1-0 Right.", "info"
-
-        
-
-        return "✅ STATUS: Stable. Stay on this line.", "success"
-
-# 2. STREAMLIT UI SETUP
-
-st.set_page_config(page_title="Lane Logic™ MVP", layout="centered")
-
-st.title("🎳 Lane Logic™ Delta Engine")
-
-if 'history' not in st.session_state:
-
-    st.session_state.history = []
-
-# 3. SIDEBAR: ARSENAL & SETTINGS
-
-with st.sidebar:
-
-    st.header("Setup")
-
-    ball = st.selectbox("Current Ball", ["Phaze II Solid", "Phaze II Pearl", "Hustle X-Ray"])
-
-    st.divider()
-
-    if st.button("Reset Session"):
-
-        st.session_state.history = []
-
-        st.rerun()
-
-# 4. MAIN INTERFACE: INPUT BUTTONS
-
-st.subheader("Last Shot Result")
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1: res = "Flush" if st.button("Flush 🟢") else None
-
-with col2: res = "High" if st.button("High 🔴") else None
-
-with col3: res = "Light" if st.button("Light 🟡") else None
-
-with col4: res = "Brooklyn" if st.button("BK 🔵") else None
-
-st.subheader("Speed Filter")
-
-s_col1, s_col2, s_col3 = st.columns(3)
-
-with s_col1: spd = "OK" if st.button("OK Speed") else None
-
-with s_col2: spd = "Fast" if st.button("FAST") else None
-
-with s_col3: spd = "Slow" if st.button("SLOW") else None
-
-# 5. PROCESS & ADVISE
-
-if res and spd:
-
-    engine = DeltaEngine()
-
-    msg, type = engine.analyze_shot(res, spd, "Mid", st.session_state.history)
-
+    import pandas as pd
     
-
-    st.session_state.history.append({"ball": ball, "result": res, "speed": spd, "advice": msg})
-
+    # 1. THE DELTA ENGINE LOGIC
+    class DeltaEngine:
+        def analyze_shot(self, result, speed, release, history):
+            if speed in ['Fast', 'Slow']:
+                return "⚠️ SPEED ERROR: Stay put. Do not adjust.", "warning"
+            
+            if release == 'Pulled':
+                return "🎯 PULL DETECTED: Disregard lane friction. Check your target.", "warning"
+            
+            # Energy Drain Rule
+            if len(history) >= 1:
+                prev = history[-1]
+                if prev.get('result') in ['High', 'Brooklyn'] and result == 'Light':
+                    return "🚨 CRITICAL: Energy Drain. BALL DOWN NOW.", "error"
     
-
-    # Big Advisor Box
-
-    if type == "success": st.success(msg)
-
-    elif type == "info": st.info(msg)
-
-    elif type == "warning": st.warning(msg)
-
-    else: st.error(msg)
-
-# 6. HISTORY LOG
-
-if st.session_state.history:
-
-    st.divider()
-
-    st.subheader("Session Log")
-
-    df = pd.DataFrame(st.session_state.history)
-
-    st.table(df.tail(5))
+            # Basic Transition Logic
+            if result in ['High', 'Brooklyn']:
+                return "📉 CAUTION: Friction detected. Move 1-1 Left.", "info"
+            elif result == 'Light':
+                return "💧 OIL DETECTED: Ball finishing late. Move 1-0 Right.", "info"
+            
+            return "✅ STATUS: Stable. Stay on this line.", "success"
+    
+    # 2. UI SETUP & STATE
+    st.set_page_config(page_title="Lane Logic™ MVP v1.2", layout="centered")
+    st.title("🎳 Lane Logic™ Delta Engine")
+    
+    if 'history' not in st.session_state: st.session_state.history = []
+    if 'last_res' not in st.session_state: st.session_state.last_res = None
+    if 'last_spd' not in st.session_state: st.session_state.last_spd = None
+    if 'last_rel' not in st.session_state: st.session_state.last_rel = "Good"
+    
+    # 3. SIDEBAR
+    with st.sidebar:
+        st.header("Setup")
+        ball = st.selectbox("Current Ball", ["Phaze II Solid", "Phaze II Pearl", "Hustle X-Ray"])
+        if st.button("Reset Session"):
+            st.session_state.history = []
+            st.session_state.last_res = None
+            st.rerun()
+    
+    # 4. INPUT BUTTONS
+    st.subheader("1. Result")
+    r1, r2, r3, r4 = st.columns(4)
+    if r1.button("Flush 🟢"): st.session_state.last_res = "Flush"
+    if r2.button("High 🔴"): st.session_state.last_res = "High"
+    if r3.button("Light 🟡"): st.session_state.last_res = "Light"
+    if r4.button("BK 🔵"): st.session_state.last_res = "Brooklyn"
+    
+    st.subheader("2. Speed")
+    s1, s2, s3 = st.columns(3)
+    if s1.button("OK Speed"): st.session_state.last_spd = "OK"
+    if s2.button("FAST"): st.session_state.last_spd = "Fast"
+    if s3.button("SLOW"): st.session_state.last_spd = "Slow"
+    
+    st.subheader("3. Release")
+    rel1, rel2 = st.columns(2)
+    if rel1.button("Good Release (GR)"): st.session_state.last_rel = "Good"
+    if rel2.button("Pulled (PI)"): st.session_state.last_rel = "Pulled"
+    
+    # 5. PROCESS & DISPLAY ADVICE
+    if st.session_state.last_res and st.session_state.last_spd:
+        engine = DeltaEngine()
+        msg, alert_type = engine.analyze_shot(
+            st.session_state.last_res, 
+            st.session_state.last_spd, 
+            st.session_state.last_rel, 
+            st.session_state.history
+        )
+        
+        # Show the Big Advice Box
+        if alert_type == "success": st.success(msg)
+        elif alert_type == "info": st.info(msg)
+        elif alert_type == "warning": st.warning(msg)
+        else: st.error(msg)
+        
+        # Save to history and reset for next shot
+        if st.button("Confirm & Save Shot"):
+            st.session_state.history.append({
+                "ball": ball, 
+                "result": st.session_state.last_res, 
+                "speed": st.session_state.last_spd, 
+                "advice": msg
+            })
+            st.session_state.last_res = None
+            st.session_state.last_spd = None
+            st.rerun()
+    
+    # 6. LOG
+    if st.session_state.history:
+        st.divider()
+        st.subheader("Session Log")
+        st.table(pd.DataFrame(st.session_state.history).tail(5))
+    
