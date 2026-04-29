@@ -23,14 +23,21 @@ def get_advice(pins_left, entry_zone, quality, speed, release, history, handedne
     elif not pins_left: # Strike
         result = "Flush"
     else:
-        # High Leaves (Righty: 4, 9, 6-10 | Lefty: 6, 8, 4-7)
-        high_pins = [4, 9] if handedness == "Right" else [6, 8]
-        if any(p in pins_left for p in high_pins) or quality == "High":
-            result = "High"
+        # Define the 'Danger Pins' for High/Light leaves
+        high_pins = [4, 9, 10] if handedness == "Right" else [6, 8, 7]
+        light_pins = [5, 2, 10] if handedness == "Right" else [5, 3, 7]
         
-        # Light Leaves (Righty: 5, 2, 10-flat | Lefty: 5, 3, 7-flat)
-        light_pins = [5, 2] if handedness == "Right" else [5, 3]
-        if any(p in pins_left for p in light_pins) or quality == "Light":
+        # 10-Pin Override: If user says Flush but leaves a 10, it's internally "High" (Ring 10 logic)
+        if (10 in pins_left and handedness == "Right") or (7 in pins_left and handedness == "Left"):
+            if quality == "Light":
+                result = "Light" # Energy Drain path
+            else:
+                result = "High" # Automatic "Ring" path even if user says Flush
+        
+        # Standard High/Light detection
+        elif any(p in pins_left for p in high_pins) or quality == "High":
+            result = "High"
+        elif any(p in pins_left for p in light_pins) or quality == "Light":
             result = "Light"
 
     # --- MOVEMENT LOGIC ---
@@ -40,6 +47,7 @@ def get_advice(pins_left, entry_zone, quality, speed, release, history, handedne
     # ENERGY DRAIN (Immediate trigger)
     if len(history) >= 1:
         last_shot = history[-1]
+        # If last shot was High/Brooklyn and this one is Light, the ball has "quit"
         if last_shot['Logic_Result'] in ['High', 'Brooklyn'] and result == 'Light':
             return "⚡️ CRITICAL: Energy Drain. BALL DOWN NOW.", "error"
 
@@ -47,7 +55,6 @@ def get_advice(pins_left, entry_zone, quality, speed, release, history, handedne
     trigger_needed = 1 if sensitivity == "Power" else 2
     
     if len(history) >= (trigger_needed - 1):
-        # Check if last N shots match the current result
         recent_matches = all(s['Logic_Result'] == result for s in history[-(trigger_needed-1):]) if trigger_needed > 1 else True
         
         if recent_matches:
@@ -64,14 +71,14 @@ def get_advice(pins_left, entry_zone, quality, speed, release, history, handedne
     return "Shot tracked. Watch for a pattern.", "info"
 
 # 2. UI SETUP
-st.set_page_config(page_title="Lane Logic™ v1.6", layout="wide")
+st.set_page_config(page_title="Lane Logic™ v1.7", layout="wide")
 
 # Sidebar Configuration
 st.sidebar.title("⚙️ System Settings")
 handedness = st.sidebar.radio("Handedness:", ["Right", "Left"])
 sensitivity = st.sidebar.radio("Player Style:", ["Stroker (Patient)", "Power (Aggressive)"])
 
-st.title("🎳 Lane Logic™ v1.6")
+st.title("🎳 Lane Logic™ v1.7")
 st.caption(f"Active Profile: {handedness}-Handed {sensitivity}")
 
 if 'history' not in st.session_state:
@@ -82,11 +89,9 @@ col1, col2 = st.columns([1.2, 1])
 with col1:
     st.subheader("Shot Entry")
     
-    # Visual Pin Deck (Interactive Checkboxes)
     st.write("Select Pins Left Standing:")
     p_cols = st.columns(4)
     pins = {}
-    # Layout pins in a triangle-ish grid
     with p_cols[0]: pins[7] = st.checkbox("7"); pins[4] = st.checkbox("4"); pins[2] = st.checkbox("2"); pins[1] = st.checkbox("1")
     with p_cols[1]: pins[8] = st.checkbox("8"); pins[5] = st.checkbox("5")
     with p_cols[2]: pins[9] = st.checkbox("9"); pins[3] = st.checkbox("3"); pins[6] = st.checkbox("6")
@@ -105,6 +110,7 @@ with col1:
     release = st.selectbox("Release (The Marcus Filter):", ["Good", "Pulled (PI)", "Pushed (PO)"])
 
     if st.button("Analyze Shot", use_container_width=True):
+        # We run the advice logic
         advice, advice_type = get_advice(selected_pins, entry_zone, quality, speed, release, st.session_state.history, handedness, sensitivity)
         
         if advice_type == "info": st.info(advice)
@@ -112,15 +118,16 @@ with col1:
         elif advice_type == "error": st.error(advice)
         elif advice_type == "success": st.success(advice)
             
-        # Logic_Result is the "translated" result used for math
-        res_map = get_advice(selected_pins, entry_zone, quality, speed, release, [], handedness, sensitivity) # Get logic result
-        
-        # Temp trick to get result string
+        # Determine internal Logic Result for history
+        # (This mimics the translation logic inside get_advice)
         temp_res = "Flush"
         if entry_zone == "Brooklyn/Jersey": temp_res = "Brooklyn"
-        elif selected_pins:
-            if quality == "High": temp_res = "High"
-            elif quality == "Light": temp_res = "Light"
+        elif 10 in selected_pins or 7 in selected_pins:
+            temp_res = "Light" if quality == "Light" else "High"
+        elif any(p in selected_pins for p in ([4, 9] if handedness == "Right" else [6, 8])) or quality == "High":
+            temp_res = "High"
+        elif any(p in selected_pins for p in ([5, 2] if handedness == "Right" else [5, 3])) or quality == "Light":
+            temp_res = "Light"
         
         st.session_state.history.append({
             "Pins": str(selected_pins) if selected_pins else "Strike",
